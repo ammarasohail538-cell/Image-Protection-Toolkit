@@ -1,0 +1,794 @@
+{% extends "base.html" %}
+{% block title %}Secret Image Splitter & PIN Unlocker (Visual Cryptography){% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <a href="/" class="back-link">
+            {{ icons.icon("arrow-left", 18) }}
+            <span>Back to Dashboard</span>
+        </a>
+    </div>
+
+    <div class="tool-panel">
+        <div class="tool-panel-header">
+            <div class="tool-header-left">
+                <div class="tool-icon-wrapper">
+                    {{ icons.icon("layers", 28) }}
+                </div>
+                <div>
+                    <div class="title-with-badge">
+                        <h1 class="panel-title">Secret Image Splitter & PIN Unlocker</h1>
+                        <span class="panel-badge">Visual Cryptography • Naor-Shamir (2,2)</span>
+                    </div>
+                    <p class="panel-description">
+                        Split any confidential picture, signature, or badge into two noisy cipher shares. Send one share to a friend along with a secret PIN to reveal the original image!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode Navigation Tabs -->
+        <div class="vc-mode-tabs">
+            <button type="button" class="vc-tab-btn active" id="tab-btn-split" onclick="switchVcTab('split')">
+                {{ icons.icon("layers", 18) }}
+                <span>1. Split Secret & Set PIN (Sender Mode)</span>
+            </button>
+            <button type="button" class="vc-tab-btn" id="tab-btn-unlock" onclick="switchVcTab('unlock')">
+                {{ icons.icon("unlock", 18) }}
+                <span>2. Unlock Received Share with PIN (Friend Mode)</span>
+            </button>
+            <button type="button" class="vc-tab-btn" id="tab-btn-recombine" onclick="switchVcTab('recombine')">
+                {{ icons.icon("aspect-ratio", 18) }}
+                <span>3. Direct 2-Share Stacking</span>
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 1: SENDER MODE (SPLIT + PIN)           -->
+        <!-- ========================================== -->
+        <div id="vc-tab-content-split" class="vc-tab-pane">
+            <div class="simple-terms-card">
+                <div class="simple-terms-icon">💡</div>
+                <div class="simple-terms-content">
+                    <strong>How Sender Mode Works:</strong>
+                    <span>Upload your secret image and choose a secret PIN (like <code>1234</code>). The tool generates Share 1 (Key Noise) and Share 2 (Cipher Noise). You can send Share 2 to a friend. When they enter the PIN, the original image reappears! Neither share leaks any secret on its own.</span>
+                </div>
+            </div>
+
+            <form id="vc-split-form" class="tool-form" onsubmit="handleVisualCryptoSplit(event)">
+                <div class="form-group">
+                    <div class="label-with-value">
+                        <label class="form-label">Upload Secret Image, Logo, or Signature <span class="required">*</span></label>
+                        <button type="button" class="btn-text-link" onclick="loadDemoSecret()">
+                            ⚡ Try Demo Passkey ("TOP SECRET #9842")
+                        </button>
+                    </div>
+                    <div class="dropzone dropzone-sm" id="vc-dropzone">
+                        <input type="file" id="vc-input-file" accept="image/*" required onchange="handleVcFileChosen(this)">
+                        <div class="dropzone-content">
+                            <div class="dropzone-icon">{{ icons.icon("upload", 28) }}</div>
+                            <p class="dropzone-title" id="vc-dropzone-text">Click to choose or drop secret image</p>
+                            <p class="dropzone-subtitle">Accepts JPG, PNG, WEBP (signatures, badges, text graphics work best)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="label-with-value">
+                        <label for="vc-pin" class="form-label">Shared Secret PIN / Passcode (For Friend to Unlock)</label>
+                        <span class="badge" style="font-family: monospace;">Optional / Recommended</span>
+                    </div>
+                    <input type="text" id="vc-pin" class="form-control" placeholder="e.g. 1234 or secret-passkey" value="1234">
+                    <p class="form-hint">If provided, Share 1 is tied to this PIN. Your friend only needs Share 2 and this PIN to unlock the secret!</p>
+                </div>
+
+                <div class="form-group">
+                    <div class="label-with-value">
+                        <label for="vc-threshold" class="form-label">Contrast Binarization Sensitivity</label>
+                        <span class="slider-value" id="vc-threshold-val">128</span>
+                    </div>
+                    <input type="range" id="vc-threshold" min="40" max="220" value="128" class="form-range" oninput="document.getElementById('vc-threshold-val').textContent = this.value">
+                    <div class="range-labels">
+                        <span>40 (Darker)</span>
+                        <span>128 (Balanced)</span>
+                        <span>220 (Brighter)</span>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg" id="vc-split-btn">
+                        <span class="btn-spinner" id="vc-spinner" style="display: none;"></span>
+                        <span>Split Into 2 Cryptographic Shares</span>
+                        <span>➔</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Dynamic Results Panel for Split -->
+            <div id="vc-results-panel" class="vc-results-container" style="display: none; margin-top: 2.5rem;">
+                <div class="section-header">
+                    <h2 class="section-title">Generated Cryptographic Shares</h2>
+                    <div class="section-line"></div>
+                </div>
+
+                <!-- 3 Side-by-Side Cards: Share 1, Share 2, and Revealed Output -->
+                <div class="vc-shares-grid vc-shares-grid-3">
+                    <div class="vc-share-card">
+                        <div class="vc-share-header">
+                            <span class="badge">Share 1 (Key Noise)</span>
+                            <small id="s1-pin-tag">From PIN: 1234</small>
+                        </div>
+                        <div class="vc-img-box">
+                            <img id="img-share-1" src="" alt="Share 1" class="vc-preview-img">
+                        </div>
+                        <p class="vc-note">Random binary noise. Leaks zero data alone.</p>
+                    </div>
+
+                    <div class="vc-share-card">
+                        <div class="vc-share-header">
+                            <span class="badge" style="background: rgba(96, 165, 250, 0.2); color: #60A5FA; border-color: rgba(96, 165, 250, 0.5);">Share 2 (Cipher Noise)</span>
+                            <small>Send to Friend</small>
+                        </div>
+                        <div class="vc-img-box">
+                            <img id="img-share-2" src="" alt="Share 2" class="vc-preview-img">
+                        </div>
+                        <p class="vc-note">Random binary noise. Send this file to your friend.</p>
+                        <button type="button" class="btn btn-sm btn-secondary" style="margin-top: 0.5rem; width: 100%;" onclick="downloadShare2Directly()">
+                            {{ icons.icon("upload", 14) }}
+                            <span>Download Share 2 Only</span>
+                        </button>
+                        <a href="#" class="btn btn-sm" style="margin-top: 0.5rem; width: 100%; background: #25D366; color: #FFFFFF; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: var(--radius-sm);" onclick="shareOnWhatsApp(event)">
+                            <span>💬 Share PIN via WhatsApp</span>
+                        </a>
+                    </div>
+
+                    <div class="vc-share-card vc-reconstructed-card">
+                        <div class="vc-share-header">
+                            <span class="badge badge-success">Secret Revealed</span>
+                            <small style="color: #34D399; font-weight: 700;">Reconstructed</small>
+                        </div>
+                        <div class="vc-img-box">
+                            <img id="img-overlay" src="" alt="Reconstructed Secret" class="vc-preview-img">
+                        </div>
+                        <p class="vc-note" style="color: #6EE7B7; font-weight: 600;">The secret emerges with zero computation!</p>
+                        <button type="button" class="btn btn-sm btn-primary" style="margin-top: 0.5rem; width: 100%;" onclick="sendToFriendTest()">
+                            <span>⚡ Test Unlocking in Friend Mode ➔</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Live Overlay Slider -->
+                <div class="vc-interactive-demo-card">
+                    <div class="vc-demo-header">
+                        <div class="vc-demo-title">
+                            {{ icons.icon("layers", 20) }}
+                            <h3>Interactive Optical Stacking Demonstration</h3>
+                        </div>
+                        <form method="post" action="/visual-crypto/download" id="vc-download-form" style="display: inline;">
+                            <input type="hidden" name="threshold" id="vc-dl-threshold" value="128">
+                            <input type="hidden" name="pin" id="vc-dl-pin" value="1234">
+                            <button type="submit" class="btn btn-sm btn-secondary" id="vc-dl-btn">
+                                {{ icons.icon("upload", 14) }}
+                                <span>Download Both Shares (.zip)</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <p class="vc-demo-desc">
+                        Drag the slider to slide Share 1 horizontally over Share 2. Notice how the image remains noisy until the subpixels align at 100%, instantly revealing the secret message!
+                    </p>
+
+                    <div class="vc-slider-controls">
+                        <div class="label-with-value">
+                            <label for="vc-overlay-slider" class="form-label">↔️ Drag to Stack & Align Shares:</label>
+                            <span class="badge" id="vc-slider-badge" style="font-size: 0.9rem; font-family: monospace;">0% (Separated)</span>
+                        </div>
+                        <input type="range" id="vc-overlay-slider" min="0" max="100" value="0" class="form-range vc-slider" oninput="handleSliderChange(this.value)">
+                        <div class="vc-slider-tags">
+                            <span>0% (Misaligned Noise)</span>
+                            <span>50% (Sliding Overlap)</span>
+                            <span style="color: #34D399; font-weight: 700;">100% (Aligned Secret Reveal)</span>
+                        </div>
+                    </div>
+
+                    <div class="vc-stage-viewport">
+                        <div class="vc-stage-canvas-box">
+                            <canvas id="vc-canvas" width="600" height="350" class="vc-interactive-canvas"></canvas>
+                            <div class="vc-stage-caption" id="vc-canvas-caption">Status: 0% Alignment (Noise Only)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: FRIEND / RECEIVER MODE (PIN UNLOCK) -->
+        <!-- ========================================== -->
+        <div id="vc-tab-content-unlock" class="vc-tab-pane" style="display: none;">
+            <div class="simple-terms-card">
+                <div class="simple-terms-icon">🎁</div>
+                <div class="simple-terms-content">
+                    <strong>How Friend Mode Works:</strong>
+                    <span>Your friend sent you a scrambled noisy image (Share 2) and gave you a secret PIN. Upload their noisy image below, enter the secret PIN, and click Unlock. The secret image will instantly decode! If anyone tries the wrong PIN, they only see scrambled noise.</span>
+                </div>
+            </div>
+
+            <form id="vc-unlock-form" class="tool-form" onsubmit="handleVisualCryptoUnlock(event)">
+                <div class="form-group">
+                    <div class="label-with-value">
+                        <label class="form-label">Upload Received Cipher Share (Share 2) <span class="required">*</span></label>
+                        <button type="button" class="btn-text-link" id="btn-use-generated-s2" style="display: none;" onclick="useGeneratedShare2ForUnlock()">
+                            ⚡ Use Last Generated Share 2
+                        </button>
+                    </div>
+                    <div class="dropzone dropzone-sm" id="vc-unlock-dropzone">
+                        <input type="file" id="vc-unlock-file" accept="image/*" required onchange="handleVcUnlockFileChosen(this)">
+                        <div class="dropzone-content">
+                            <div class="dropzone-icon">{{ icons.icon("upload", 28) }}</div>
+                            <p class="dropzone-title" id="vc-unlock-dropzone-text">Click to choose or drop the received noisy image</p>
+                            <p class="dropzone-subtitle">Accepts PNG or JPG visual crypto share</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="vc-receiver-pin" class="form-label">Enter Secret PIN / Passcode <span class="required">*</span></label>
+                    <input type="text" id="vc-receiver-pin" class="form-control" placeholder="Enter PIN given by sender (e.g. 1234)" required>
+                </div>
+
+                <div class="form-actions" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary btn-lg" id="vc-unlock-btn">
+                        <span class="btn-spinner" id="vc-unlock-spinner" style="display: none;"></span>
+                        <span>Unlock & Reveal Secret Image</span>
+                        <span>➔</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-lg" onclick="testWrongPinDemo()">
+                        <span>Test with Wrong PIN (Proof of Security)</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Unlock Results Panel -->
+            <div id="vc-unlock-results" class="vc-results-container" style="display: none; margin-top: 2.5rem;">
+                <div class="section-header">
+                    <h2 class="section-title">Friend's Decryption Result</h2>
+                    <div class="section-line"></div>
+                </div>
+
+                <div class="vc-shares-grid vc-shares-grid-3">
+                    <div class="vc-share-card">
+                        <div class="vc-share-header">
+                            <span class="badge">Received Share</span>
+                            <small>Uploaded Cipher</small>
+                        </div>
+                        <div class="vc-img-box">
+                            <img id="img-unlock-input" src="" alt="Uploaded Share" class="vc-preview-img">
+                        </div>
+                        <p class="vc-note">The scrambled noisy image sent by your friend.</p>
+                    </div>
+
+                    <div class="vc-share-card">
+                        <div class="vc-share-header">
+                            <span class="badge" style="background: rgba(167, 139, 250, 0.2); color: #A78BFA; border-color: rgba(167, 139, 250, 0.5);">Key Generated from PIN</span>
+                            <small id="unlock-pin-used-badge">PIN: 1234</small>
+                        </div>
+                        <div class="vc-img-box">
+                            <img id="img-unlock-key" src="" alt="Regenerated Key" class="vc-preview-img">
+                        </div>
+                        <p class="vc-note">Mathematically reconstructed from the PIN.</p>
+                    </div>
+
+                    <div class="vc-share-card vc-reconstructed-card">
+                        <div class="vc-share-header">
+                            <span class="badge badge-success" id="unlock-status-badge">Secret Unlocked!</span>
+                            <small style="color: #34D399; font-weight: 700;">Zero CPU Decrypt</small>
+                        </div>
+                        <div class="vc-img-box">
+                            <img id="img-unlock-result" src="" alt="Unlocked Result" class="vc-preview-img">
+                        </div>
+                        <p class="vc-note" id="unlock-status-note" style="color: #6EE7B7; font-weight: 600;">The secret message is revealed by optical alignment!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: DIRECT 2-SHARE STACKING             -->
+        <!-- ========================================== -->
+        <div id="vc-tab-content-recombine" class="vc-tab-pane" style="display: none;">
+            <div class="simple-terms-card">
+                <div class="simple-terms-icon">📑</div>
+                <div class="simple-terms-content">
+                    <strong>Direct 2-Share Stacking:</strong>
+                    <span>If you already have both physical or digital files (Share 1 and Share 2), you can upload both here to digitally overlay them without needing any PIN.</span>
+                </div>
+            </div>
+
+            <form id="vc-recombine-form" class="tool-form" onsubmit="handleVisualCryptoRecombine(event)">
+                <div class="hash-inputs-grid">
+                    <div class="hash-input-card">
+                        <label class="form-label">Upload Share 1 (Key Image) <span class="required">*</span></label>
+                        <div class="dropzone dropzone-sm">
+                            <input type="file" id="vc-rec-s1" accept="image/*" required>
+                            <div class="dropzone-content">
+                                <div class="dropzone-icon">{{ icons.icon("upload", 28) }}</div>
+                                <p class="dropzone-title">Select Share 1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hash-input-card">
+                        <label class="form-label">Upload Share 2 (Cipher Image) <span class="required">*</span></label>
+                        <div class="dropzone dropzone-sm">
+                            <input type="file" id="vc-rec-s2" accept="image/*" required>
+                            <div class="dropzone-content">
+                                <div class="dropzone-icon">{{ icons.icon("upload", 28) }}</div>
+                                <p class="dropzone-title">Select Share 2</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary btn-lg" id="vc-recombine-btn">
+                        <span>Stack Shares & Reveal Secret</span>
+                        <span>➔</span>
+                    </button>
+                </div>
+            </form>
+
+            <div id="vc-recombine-results" class="vc-results-container" style="display: none; margin-top: 2.5rem;">
+                <div class="section-header">
+                    <h2 class="section-title">Recombined Secret Image</h2>
+                    <div class="section-line"></div>
+                </div>
+                <div style="display: flex; justify-content: center;">
+                    <div class="vc-share-card vc-reconstructed-card" style="max-width: 480px; width: 100%;">
+                        <div class="vc-img-box" style="height: auto; max-width: 440px;">
+                            <img id="img-recombine-result" src="" alt="Combined Result" class="vc-preview-img" style="max-height: 400px; width: auto;">
+                        </div>
+                        <p class="vc-note" style="color: #6EE7B7; font-weight: 600; margin-top: 0.75rem;">Shares stacked successfully!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Theory Card for Viva -->
+        <div class="theory-card" style="margin-top: 3rem;">
+            <h3>Naor-Shamir (2, 2) Visual Threshold Scheme & Technical Overview</h3>
+            <p>
+                Invented by Moni Naor and Adi Shamir (1994), <strong>Visual Cryptography</strong> is a perfectly secure secret sharing scheme:
+            </p>
+            <ul class="theory-list">
+                <li><strong>2x2 Subpixel Expansion:</strong> Every pixel in the secret image is mapped to a \(2 \times 2\) block of subpixels in Share 1 and Share 2.</li>
+                <li><strong>White Pixel Representation:</strong> Share 1 and Share 2 are assigned the <em>exact same</em> random subpixel pattern. When overlaid, 2 subpixels are black and 2 are white, allowing 50% light transmittance (appears light/white).</li>
+                <li><strong>Black Pixel Representation:</strong> Share 1 and Share 2 are assigned <em>complementary</em> subpixel patterns. When overlaid, all 4 subpixels turn black, blocking 100% of light transmittance (appears solid black).</li>
+                <li><strong>PIN-Authenticated Secret Sharing:</strong> By seeding the cryptographically secure PRNG with the shared secret PIN, Share 1 can be regenerated on-demand by the receiver. Thus, only Share 2 needs to be transmitted, and possession of the PIN is strictly required to decrypt.</li>
+                <li><strong>Information-Theoretic Security:</strong> Even with unlimited supercomputer power, an attacker holding only Share 2 has a strictly 50/50 probability distribution for every pixel, guaranteeing mathematical secrecy.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+.vc-mode-tabs {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+.vc-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.25rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.vc-tab-btn:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.08);
+}
+.vc-tab-btn.active {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.25));
+    border-color: rgba(139, 92, 246, 0.6);
+    color: #FFFFFF;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let lastUploadedFile = null;
+let lastGeneratedShare2Blob = null;
+let lastUsedPin = "1234";
+let loadedShare1 = null;
+let loadedShare2 = null;
+let loadedOverlay = null;
+
+function switchVcTab(tabId) {
+    document.querySelectorAll(".vc-tab-pane").forEach(pane => pane.style.display = "none");
+    document.querySelectorAll(".vc-tab-btn").forEach(btn => btn.classList.remove("active"));
+
+    const targetPane = document.getElementById("vc-tab-content-" + tabId);
+    const targetBtn = document.getElementById("tab-btn-" + tabId);
+    if (targetPane) targetPane.style.display = "block";
+    if (targetBtn) targetBtn.classList.add("active");
+}
+
+function handleVcFileChosen(input) {
+    if (input.files && input.files[0]) {
+        lastUploadedFile = input.files[0];
+        document.getElementById("vc-dropzone-text").textContent = "Selected: " + input.files[0].name;
+    }
+}
+
+function handleVcUnlockFileChosen(input) {
+    if (input.files && input.files[0]) {
+        document.getElementById("vc-unlock-dropzone-text").textContent = "Selected: " + input.files[0].name;
+    }
+}
+
+async function loadDemoSecret() {
+    try {
+        const resp = await fetch("/static/demo_secret.png");
+        const blob = await resp.blob();
+        const file = new File([blob], "TOP_SECRET_PASSKEY.png", { type: "image/png" });
+        lastUploadedFile = file;
+
+        const container = new DataTransfer();
+        container.items.add(file);
+        const fileInput = document.getElementById("vc-input-file");
+        fileInput.files = container.files;
+
+        document.getElementById("vc-dropzone-text").textContent = "Selected Demo: TOP_SECRET_PASSKEY.png";
+        document.getElementById("vc-pin").value = "1234";
+        
+        // Auto trigger split
+        document.getElementById("vc-split-form").dispatchEvent(new Event("submit"));
+    } catch (e) {
+        showAppModal({ title: "Demo Notice", message: "Could not load demo image. You can upload any image directly.", type: "warning" });
+    }
+}
+
+async function handleVisualCryptoSplit(event) {
+    event.preventDefault();
+    const fileInput = document.getElementById("vc-input-file");
+    if (!fileInput.files || !fileInput.files[0]) {
+        showAppModal({ title: "File Required", message: "Please select an image file to split into visual shares.", type: "warning" });
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const threshold = document.getElementById("vc-threshold").value;
+    const pin = document.getElementById("vc-pin").value.trim();
+    lastUsedPin = pin || "1234";
+    const btn = document.getElementById("vc-split-btn");
+    const spinner = document.getElementById("vc-spinner");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("threshold", threshold);
+    formData.append("pin", pin);
+
+    try {
+        btn.disabled = true;
+        spinner.style.display = "inline-block";
+
+        const resp = await fetch("/visual-crypto/split", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+            showAppModal({ title: "Visual Crypto Error", message: data.message || "Failed to split image.", type: "error" });
+            return;
+        }
+
+        // Store Share 2 data URI for quick testing in friend mode
+        const s2Resp = await fetch(data.share2);
+        lastGeneratedShare2Blob = await s2Resp.blob();
+        document.getElementById("btn-use-generated-s2").style.display = "inline-block";
+
+        // Display results in cards
+        document.getElementById("img-share-1").src = data.share1;
+        document.getElementById("img-share-2").src = data.share2;
+        document.getElementById("img-overlay").src = data.overlay;
+
+        document.getElementById("s1-pin-tag").textContent = pin ? "Tied to PIN: " + pin : "Uniform Random";
+
+        // Preload images for interactive canvas
+        loadedShare1 = new Image();
+        loadedShare2 = new Image();
+        loadedOverlay = new Image();
+
+        let loadedCount = 0;
+        function onImageLoaded() {
+            loadedCount++;
+            if (loadedCount === 3) {
+                initCanvasDimensions();
+                handleSliderChange(0);
+            }
+        }
+
+        loadedShare1.onload = onImageLoaded;
+        loadedShare2.onload = onImageLoaded;
+        loadedOverlay.onload = onImageLoaded;
+
+        loadedShare1.src = data.share1;
+        loadedShare2.src = data.share2;
+        loadedOverlay.src = data.overlay;
+
+        document.getElementById("vc-results-panel").style.display = "block";
+        document.getElementById("vc-overlay-slider").value = 0;
+        document.getElementById("vc-dl-pin").value = pin;
+
+        document.getElementById("vc-results-panel").scrollIntoView({ behavior: "smooth" });
+
+        showAppModal({
+            title: "Shares Created Successfully!",
+            message: "The secret was split into Share 1 and Share 2. If you set a PIN (" + (pin || "default") + "), you can send Share 2 to a friend and they can unlock it using that PIN!",
+            type: "success",
+            buttonText: "View Generated Shares"
+        });
+
+    } catch (err) {
+        showAppModal({ title: "Error", message: "Could not connect to visual cryptography engine.", type: "error" });
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = "none";
+    }
+}
+
+function downloadShare2Directly() {
+    const img = document.getElementById("img-share-2");
+    if (!img || !img.src) return;
+    const a = document.createElement("a");
+    a.href = img.src;
+    a.download = "share2_cipher_for_friend.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function shareOnWhatsApp(e) {
+    e.preventDefault();
+    const pin = document.getElementById("vc-pin").value.trim() || "1234";
+    const text = encodeURIComponent(
+        "I sent you a secret image\nthis is the Secret PIN: " + pin + " /save the image file as a *Document* (uncompressed PNG) so WhatsApp doesn't compress or blur the pixel dots"
+    );
+    window.open("https://api.whatsapp.com/send?text=" + text, "_blank");
+}
+
+function sendToFriendTest() {
+    switchVcTab("unlock");
+    useGeneratedShare2ForUnlock();
+    document.getElementById("vc-receiver-pin").value = lastUsedPin;
+    document.getElementById("vc-tab-content-unlock").scrollIntoView({ behavior: "smooth" });
+}
+
+function useGeneratedShare2ForUnlock() {
+    if (!lastGeneratedShare2Blob) return;
+    const file = new File([lastGeneratedShare2Blob], "share2_cipher_for_friend.png", { type: "image/png" });
+    const container = new DataTransfer();
+    container.items.add(file);
+    const input = document.getElementById("vc-unlock-file");
+    input.files = container.files;
+    document.getElementById("vc-unlock-dropzone-text").textContent = "Selected: share2_cipher_for_friend.png";
+}
+
+async function handleVisualCryptoUnlock(event) {
+    if (event) event.preventDefault();
+    const fileInput = document.getElementById("vc-unlock-file");
+    const pin = document.getElementById("vc-receiver-pin").value.trim();
+
+    if (!fileInput.files || !fileInput.files[0]) {
+        showAppModal({ title: "File Required", message: "Please upload the received noisy cipher share.", type: "warning" });
+        return;
+    }
+    if (!pin) {
+        showAppModal({ title: "PIN Required", message: "Please enter the secret PIN to unlock.", type: "warning" });
+        return;
+    }
+
+    const btn = document.getElementById("vc-unlock-btn");
+    const spinner = document.getElementById("vc-unlock-spinner");
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    formData.append("pin", pin);
+
+    try {
+        btn.disabled = true;
+        spinner.style.display = "inline-block";
+
+        const resp = await fetch("/visual-crypto/unlock-pin", {
+            method: "POST",
+            body: formData
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+            showAppModal({ title: "Unlock Error", message: data.message || "Failed to unlock share.", type: "error" });
+            return;
+        }
+
+        // Display results
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById("img-unlock-input").src = e.target.result;
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+
+        document.getElementById("img-unlock-key").src = data.share1_regenerated;
+        document.getElementById("img-unlock-result").src = data.unlocked;
+        document.getElementById("unlock-pin-used-badge").textContent = "PIN Used: " + data.pin;
+
+        // Check if wrong pin test
+        const isWrong = (data.pin !== lastUsedPin && lastUsedPin !== "");
+        const statusBadge = document.getElementById("unlock-status-badge");
+        const statusNote = document.getElementById("unlock-status-note");
+
+        if (isWrong) {
+            statusBadge.className = "badge";
+            statusBadge.style.background = "rgba(239, 68, 68, 0.2)";
+            statusBadge.style.color = "#F87171";
+            statusBadge.style.borderColor = "rgba(239, 68, 68, 0.5)";
+            statusBadge.textContent = "Wrong PIN (Still Scrambled Noise)";
+            statusNote.style.color = "#F87171";
+            statusNote.textContent = "Security Verified: With the wrong PIN, the output remains 100% scrambled TV static noise!";
+        } else {
+            statusBadge.className = "badge badge-success";
+            statusBadge.style.background = "";
+            statusBadge.style.color = "";
+            statusBadge.style.borderColor = "";
+            statusBadge.textContent = "Secret Unlocked!";
+            statusNote.style.color = "#6EE7B7";
+            statusNote.textContent = "Success: Correct PIN unlocked the secret image by optical alignment!";
+        }
+
+        document.getElementById("vc-unlock-results").style.display = "block";
+        document.getElementById("vc-unlock-results").scrollIntoView({ behavior: "smooth" });
+
+    } catch (err) {
+        showAppModal({ title: "Error", message: "Could not connect to unlock engine.", type: "error" });
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = "none";
+    }
+}
+
+function testWrongPinDemo() {
+    const fileInput = document.getElementById("vc-unlock-file");
+    if (!fileInput.files || !fileInput.files[0]) {
+        if (lastGeneratedShare2Blob) {
+            useGeneratedShare2ForUnlock();
+        } else {
+            showAppModal({ title: "Share Required", message: "Please choose or load a cipher share first.", type: "warning" });
+            return;
+        }
+    }
+    document.getElementById("vc-receiver-pin").value = "9999-WRONG-PIN";
+    handleVisualCryptoUnlock(null);
+}
+
+async function handleVisualCryptoRecombine(event) {
+    event.preventDefault();
+    const f1 = document.getElementById("vc-rec-s1").files[0];
+    const f2 = document.getElementById("vc-rec-s2").files[0];
+    if (!f1 || !f2) {
+        showAppModal({ title: "Both Shares Required", message: "Please upload both Share 1 and Share 2.", type: "warning" });
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("share1", f1);
+    formData.append("share2", f2);
+
+    try {
+        const resp = await fetch("/visual-crypto/recombine", {
+            method: "POST",
+            body: formData
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+            showAppModal({ title: "Error", message: data.message || "Failed to combine shares.", type: "error" });
+            return;
+        }
+        document.getElementById("img-recombine-result").src = data.combined;
+        document.getElementById("vc-recombine-results").style.display = "block";
+        document.getElementById("vc-recombine-results").scrollIntoView({ behavior: "smooth" });
+    } catch (err) {
+        showAppModal({ title: "Error", message: "Could not combine shares.", type: "error" });
+    }
+}
+
+function initCanvasDimensions() {
+    const canvas = document.getElementById("vc-canvas");
+    if (!canvas || !loadedShare2) return;
+    canvas.width = loadedShare2.width;
+    canvas.height = loadedShare2.height;
+}
+
+function handleSliderChange(val) {
+    const percent = parseFloat(val);
+    const badge = document.getElementById("vc-slider-badge");
+    const caption = document.getElementById("vc-canvas-caption");
+
+    if (percent === 0) {
+        badge.textContent = "0% (Separated Noise)";
+        badge.className = "badge";
+        caption.textContent = "Status: 0% Alignment (Separate Noise Shares)";
+        caption.style.color = "var(--text-muted)";
+    } else if (percent < 100) {
+        badge.textContent = Math.round(percent) + "% (Sliding Overlap)";
+        badge.className = "badge";
+        caption.textContent = "Status: " + Math.round(percent) + "% Alignment (Subpixels Misaligned)";
+        caption.style.color = "#60A5FA";
+    } else {
+        badge.textContent = "100% (ALIGNED & REVEALED!)";
+        badge.className = "badge badge-success";
+        caption.textContent = "✨ Status: 100% Aligned! Secret Revealed by Human Optical Vision!";
+        caption.style.color = "#34D399";
+    }
+
+    renderCanvas(percent);
+}
+
+function renderCanvas(percent) {
+    const canvas = document.getElementById("vc-canvas");
+    if (!canvas || !loadedShare1 || !loadedShare2 || !loadedOverlay) return;
+
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, w, h);
+
+    if (percent >= 100) {
+        ctx.drawImage(loadedOverlay, 0, 0, w, h);
+    } else {
+        ctx.drawImage(loadedShare2, 0, 0, w, h);
+        const shiftX = Math.round((100 - percent) * 0.8);
+        ctx.globalCompositeOperation = "multiply";
+        ctx.drawImage(loadedShare1, shiftX, 0, w, h);
+        ctx.globalCompositeOperation = "source-over";
+    }
+}
+
+// Download handler attaches current file to download form
+document.getElementById("vc-download-form").addEventListener("submit", function(e) {
+    if (!lastUploadedFile) {
+        e.preventDefault();
+        showAppModal({ title: "File Required", message: "Please split an image first before downloading.", type: "warning" });
+        return;
+    }
+    const container = new DataTransfer();
+    container.items.add(lastUploadedFile);
+    
+    let hiddenInput = this.querySelector('input[type="file"]');
+    if (!hiddenInput) {
+        hiddenInput = document.createElement("input");
+        hiddenInput.type = "file";
+        hiddenInput.name = "file";
+        hiddenInput.style.display = "none";
+        this.appendChild(hiddenInput);
+    }
+    hiddenInput.files = container.files;
+    document.getElementById("vc-dl-threshold").value = document.getElementById("vc-threshold").value;
+    document.getElementById("vc-dl-pin").value = document.getElementById("vc-pin").value;
+});
+</script>
+{% endblock %}

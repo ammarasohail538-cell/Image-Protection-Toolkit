@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, send_file, session, redirect, url_for, abort, jsonify
+from flask import Flask, render_template, request, send_file, session, redirect, url_for, abort, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 import io
 import os
 import re
+import jinja2
 import shutil
 import tempfile
 import hashlib
@@ -18,7 +19,20 @@ from image_tools import compress_image, resize_image, convert_image, remove_meta
 from password_ai import check_password, generate_strong_password
 import visual_crypto
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)
+
+# Resilient template loader: searches in 'templates/' folder, and falls back to root '.' if files were uploaded loose
+app.jinja_loader = jinja2.ChoiceLoader([
+    jinja2.FileSystemLoader(os.path.join(app.root_path, "templates")),
+    jinja2.FileSystemLoader(app.root_path)
+])
+
+@app.route("/static/<path:filename>", endpoint="static")
+def custom_static(filename):
+    static_dir = os.path.join(app.root_path, "static")
+    if os.path.exists(os.path.join(static_dir, filename)):
+        return send_from_directory(static_dir, filename)
+    return send_from_directory(app.root_path, filename)
 
 # the session is a cookie signed with this key, so users cannot edit it to pretend to be someone else
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")

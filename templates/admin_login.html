@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Administrator Portal Login{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card admin-auth-card">
+        <div class="auth-header">
+            <div class="auth-icon admin-auth-icon">
+                {{ icons.icon("lock", 32) }}
+            </div>
+            <div class="admin-badge-top">Restricted Access</div>
+            <h1 class="auth-title">Admin Control Portal</h1>
+            <p class="auth-subtitle">Sign in with system administrator credentials</p>
+        </div>
+
+        {% if message %}
+        <div class="alert alert-danger">
+            {{ icons.icon("alert", 18) }}
+            <span>{{ message }}</span>
+        </div>
+        {% endif %}
+
+        <form method="post" action="/admin/login" class="auth-form">
+            <div class="form-group">
+                <label for="username" class="form-label">Administrator Username</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="Enter admin username" required autofocus autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Administrator Password</label>
+                <div class="input-with-button">
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Enter admin password" required autocomplete="current-password">
+                    <button type="button" class="btn-toggle-pw" onclick="togglePasswordVisibility('password', this)" title="Show/Hide Password">
+                        👁️
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg btn-admin-submit">
+                <span>Unlock Admin Dashboard</span>
+                <span>➔</span>
+            </button>
+        </form>
+
+        <div class="auth-footer" style="display: flex; flex-direction: column; gap: 0.75rem; align-items: center; margin-top: 1.5rem;">
+            <a href="/admin/register" class="auth-link">Create an Administrator Account &rarr;</a>
+            <a href="/login" class="auth-link" style="color: var(--text-muted); font-size: 0.85rem;">← Return to User Login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Sign Up | Image Protection Toolkit{% endblock %}
+
+{% block content %}
+<div class="showcase-page-wrapper">
+    <!-- Ambient 3D Neon Background Glows (Matching Mockup) -->
+    <div class="ambient-glow glow-purple"></div>
+    <div class="ambient-glow glow-blue"></div>
+    <div class="ambient-glow glow-cyan"></div>
+
+    <div class="showcase-container">
+        <!-- Left Hero Section with 3D Headline & Live Mockup -->
+        <div class="showcase-hero-side">
+            <div class="hero-badge-glass">
+                <span class="badge-sparkle">✦</span>
+                <span>IMAGE PROTECTION TOOLKIT</span>
+            </div>
+
+            <h1 class="hero-headline-3d">
+                <span class="headline-3d-white">Your images.</span><br>
+                <span class="headline-3d-gradient">Your privacy.</span>
+            </h1>
+
+            <p class="hero-showcase-desc">
+                Join our next-generation cryptographic protection suite. Protect, encrypt, and manage your private images with military-grade standards.
+            </p>
+
+            <div class="feature-pills-row">
+                <span class="hero-pill">🔒 AES-256 Encryption</span>
+                <span class="hero-pill">⚡ AI Password Defense</span>
+                <span class="hero-pill">🛡️ SHA-256 Integrity</span>
+                <span class="hero-pill">👁️ EXIF & GPS Strip</span>
+            </div>
+
+            <!-- Floating 3D Dashboard Mockup Card (Faithful to Image 1) -->
+            <div class="mockup-window-card">
+                <div class="mockup-titlebar">
+                    <div class="mockup-dots">
+                        <span class="dot-red"></span>
+                        <span class="dot-yellow"></span>
+                        <span class="dot-green"></span>
+                    </div>
+                    <div class="mockup-brand-title">
+                        {{ icons.icon("shield", 14) }}
+                        <span>ImageProtectAI &bull; Active Defense Console</span>
+                    </div>
+                    <div class="mockup-status-tag">Engine Ready</div>
+                </div>
+
+                <div class="mockup-body">
+                    <div class="mockup-stats-grid">
+                        <div class="m-card">
+                            <span class="m-lbl">Total Images</span>
+                            <strong class="m-val">250+</strong>
+                        </div>
+                        <div class="m-card">
+                            <span class="m-lbl">Encrypted</span>
+                            <strong class="m-val" style="color: #A78BFA;">AES-256</strong>
+                        </div>
+                        <div class="m-card">
+                            <span class="m-lbl">Protection Mode</span>
+                            <strong class="m-val" style="color: #60A5FA;">ACTIVE</strong>
+                        </div>
+                        <div class="m-card">
+                            <span class="m-lbl">Security Level</span>
+                            <strong class="m-val" style="color: #34D399;">100.00%</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Glassmorphic Signup Form Card -->
+        <div class="showcase-auth-side">
+            <div class="auth-card glass-auth-card">
+                <div class="auth-header">
+                    <div class="auth-icon gradient-glow-icon">
+                        {{ icons.icon("lock", 32) }}
+                    </div>
+                    <h2 class="auth-title">Create Account</h2>
+                    <p class="auth-subtitle">Get started with our AI and Cryptography Image Protection Suite</p>
+                </div>
+
+                {% if message %}
+                <div class="alert alert-danger">
+                    {{ icons.icon("alert", 18) }}
+                    <span>{{ message }}</span>
+                </div>
+                {% endif %}
+
+                <form method="post" action="/signup" class="auth-form">
+                    <div class="form-group">
+                        <label for="username" class="form-label">Desired Username</label>
+                        <input type="text" id="username" name="username" class="form-control form-control-glass" placeholder="Choose a username" required autofocus autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">Account Password</label>
+                        <div class="input-with-button">
+                            <input type="password" id="password" name="password" class="form-control form-control-glass" placeholder="Letters, numbers & symbols" required minlength="8" autocomplete="new-password" oninput="checkSignupPasswordRequirements(this.value)">
+                            <button type="button" class="btn-toggle-pw" onclick="togglePasswordVisibility('password', this)" title="Show/Hide Password">
+                                👁️
+                            </button>
+                        </div>
+                        <div class="pw-rules-box" id="pw-rules-box" style="margin-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.78rem;">
+                            <span id="rule-len" class="pw-rule-pill">✖ 8+ Chars</span>
+                            <span id="rule-letter" class="pw-rule-pill">✖ Letters</span>
+                            <span id="rule-num" class="pw-rule-pill">✖ Numbers</span>
+                            <span id="rule-sym" class="pw-rule-pill">✖ Symbols (!@#$)</span>
+                        </div>
+                        <p class="form-hint" style="margin-top: 0.4rem;">Stored securely using PBKDF2 one-way password hashing.</p>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block btn-lg btn-gradient-glow" id="signup-submit-btn">
+                        <span>Register Account</span>
+                        <span>➔</span>
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    <span>Already registered?</span>
+                    <a href="/login" class="auth-link">Sign In</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.pw-rule-pill {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.pw-rule-pill.valid {
+    background: rgba(52, 211, 153, 0.15);
+    border-color: rgba(52, 211, 153, 0.5);
+    color: #34D399;
+}
+</style>
+
+<script>
+function checkSignupPasswordRequirements(val) {
+    const hasLen = val.length >= 8;
+    const hasLetter = /[A-Za-z]/.test(val);
+    const hasNum = /[0-9]/.test(val);
+    const hasSym = /[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~]/.test(val);
+
+    updatePill("rule-len", hasLen, "8+ Chars");
+    updatePill("rule-letter", hasLetter, "Letters");
+    updatePill("rule-num", hasNum, "Numbers");
+    updatePill("rule-sym", hasSym, "Symbols (!@#$)");
+}
+
+function updatePill(id, isValid, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isValid) {
+        el.className = "pw-rule-pill valid";
+        el.textContent = "✔ " + text;
+    } else {
+        el.className = "pw-rule-pill";
+        el.textContent = "✖ " + text;
+    }
+}
+</script>
+{% endblock %}
