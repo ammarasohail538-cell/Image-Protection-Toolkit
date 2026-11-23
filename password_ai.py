@@ -5,7 +5,12 @@ import secrets
 import string
 
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "password_model.joblib")
-model = joblib.load(MODEL_PATH)  # trained model, loaded once when the app starts
+model = None
+try:
+    if os.path.exists(MODEL_PATH):
+        model = joblib.load(MODEL_PATH)  # trained model, loaded once when the app starts
+except Exception:
+    model = None
 
 def calculate_entropy(password):
     """Calculates Shannon entropy in bits based on character pool diversity."""
@@ -61,7 +66,13 @@ def generate_strong_password(length=16):
 
 def check_password(password):
     # the model returns the probability that this password looks like a commonly used one
-    guessable = model.predict_proba([password])[0][1]
+    if model is not None:
+        try:
+            guessable = float(model.predict_proba([password])[0][1])
+        except Exception:
+            guessable = 0.5
+    else:
+        guessable = 0.5
     score = round((1 - guessable) * 100)  # 100 = looks random, 0 = looks like a common password
 
     if len(password) < 8:
