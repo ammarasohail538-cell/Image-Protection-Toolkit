@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Activity & Audit Log{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="activity-header-bar">
+        <div>
+            <h1 class="page-heading">{{ session.get('username') }}'s Activity Log</h1>
+            <p class="page-subheading">Personal audit trail of cryptographic and image operations performed on your account.</p>
+        </div>
+        <div class="activity-actions">
+            {% if logs and logs|length > 0 %}
+            <form action="{{ url_for('activity_clear') }}" method="post" onsubmit="return confirm('Are you sure you want to permanently clear all your activity history? This action cannot be undone.');">
+                <button type="submit" class="btn btn-danger">
+                    {{ icons.icon("trash", 16) }}
+                    <span>Clear All History</span>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if logs and logs|length > 0 %}
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>User Name</th>
+                        <th>Filename</th>
+                        <th>Security Operation</th>
+                        <th>Audit Status</th>
+                        <th>Timestamp</th>
+                        <th style="width: 80px; text-align: center;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# one table row per log entry; logs only contains the logged-in user's own rows #}
+                    {% for log in logs %}
+                    <tr>
+                        <td class="cell-muted">{{ loop.index }}</td>
+                        <td class="cell-username">
+                            <span class="user-pill">{{ log["username"] or session.get('username') }}</span>
+                        </td>
+                        <td class="cell-filename">
+                            <span class="file-icon">{{ icons.icon("refresh", 14) }}</span>
+                            <span class="file-text">{{ log["filename"] }}</span>
+                        </td>
+                        <td>
+                            <span class="operation-pill">{{ log["action"] }}</span>
+                        </td>
+                        <td>
+                            {% if log["status"] == "Success" %}
+                            <span class="badge badge-success">
+                                {{ icons.icon("check", 12) }} Success
+                            </span>
+                            {% else %}
+                            <span class="badge badge-danger">
+                                {{ icons.icon("alert", 12) }} Failed
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="cell-timestamp">{{ log["timestamp"] }}</td>
+                        <td style="text-align: center;">
+                            <form action="{{ url_for('activity_delete', log_id=log['id']) }}" method="post" style="display: inline;" onsubmit="return confirm('Delete this log entry?');">
+                                <button type="submit" class="btn-icon-delete" title="Delete this entry">
+                                    {{ icons.icon("trash", 14) }}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <span>Showing {{ logs|length }} recorded operations</span>
+            <span class="table-footer-note">All timestamps logged in local system time</span>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state-card">
+        <div class="empty-icon">
+            {{ icons.icon("activity", 48) }}
+        </div>
+        <h3>No Activity History Found</h3>
+        <p>Your audit log is currently clear. Any image encryption, decryption, hash checks, or utility actions will be safely logged here.</p>
+        <a href="/" class="btn btn-primary">Go to Toolkit</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

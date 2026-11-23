@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.title }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <a href="/" class="back-link">
+            {{ icons.icon("arrow-left", 18) }}
+            <span>Back to Dashboard</span>
+        </a>
+    </div>
+
+    <div class="tool-panel">
+        <div class="tool-panel-header">
+            <div class="tool-header-left">
+                <div class="tool-icon-wrapper">
+                    {{ icons.icon(tool.icon, 28) }}
+                </div>
+                <div>
+                    <div class="title-with-badge">
+                        <h1 class="panel-title">{{ tool.title }}</h1>
+                        {% if tool.badge %}
+                        <span class="panel-badge">{{ tool.badge }}</span>
+                        {% endif %}
+                    </div>
+                    <p class="panel-description">{{ tool.description }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- What this does Overview Box -->
+        <div class="simple-terms-card">
+            <div class="simple-terms-icon">💡</div>
+            <div class="simple-terms-content">
+                <strong>What this does:</strong>
+                <span>{{ tool.simple_desc }}</span>
+            </div>
+        </div>
+
+        <!-- Dynamic On-Page Result Banner (Shows % Changed, Before/After Stats) -->
+        <div id="operation-result-banner" class="result-banner-card" style="display: none;">
+            <div class="banner-top">
+                <div class="banner-badge-wrapper">
+                    <span class="banner-badge" id="banner-highlight-badge">100% COMPLETE</span>
+                    <span class="banner-title" id="banner-status-title">Operation Successful</span>
+                </div>
+                <span class="banner-filename" id="banner-downloaded-filename"></span>
+            </div>
+            <p class="banner-message" id="banner-detail-message"></p>
+            <div class="comparison-stats-row" id="banner-comparison-row" style="display: none;">
+                <div class="stat-pill">
+                    <span class="stat-lbl">Original File Size:</span>
+                    <strong class="stat-num" id="banner-orig-size">--</strong>
+                </div>
+                <span class="stat-arrow">➔</span>
+                <div class="stat-pill">
+                    <span class="stat-lbl">New Processed Size:</span>
+                    <strong class="stat-num success-num" id="banner-new-size">--</strong>
+                </div>
+                <div class="stat-pill savings-pill" id="banner-savings-pill" style="display: none;">
+                    <span class="stat-lbl">Space Saved:</span>
+                    <strong class="stat-num" id="banner-saved-pct">--</strong>
+                </div>
+            </div>
+        </div>
+
+        {# one template serves every upload tool; the {% if name == ... %} blocks show only that tool's options #}
+        {# enctype="multipart/form-data" is required, otherwise the browser would not send the file #}
+        <form id="tool-form" action="{{ url_for('tool', name=name) }}" method="post" enctype="multipart/form-data" class="tool-form" data-tool="{{ name }}">
+            
+            <div class="form-group">
+                <div class="label-with-value">
+                    <label class="form-label">Select File(s)</label>
+                    <span class="tool-mode-pill">Multi-File Batch Supported</span>
+                </div>
+                <div class="dropzone" id="dropzone">
+                    <input type="file" name="files" id="file-input" multiple {% if name == 'decrypt' %}accept=".enc,.zip,application/zip,application/x-zip-compressed"{% else %}accept="image/*"{% endif %} required>
+                    <div class="dropzone-content">
+                        <div class="dropzone-icon">
+                            {{ icons.icon("upload", 36) }}
+                        </div>
+                        <p class="dropzone-title">Click to upload or drag & drop</p>
+                        <p class="dropzone-subtitle">
+                            {% if name == 'decrypt' %}
+                            Upload encrypted .enc file(s) or your batch encrypted .zip folder
+                            {% else %}
+                            Select single or multiple images (JPEG, PNG, WEBP, BMP, etc.)
+                            {% endif %}
+                        </p>
+                        <div class="file-preview-list" id="file-preview-list" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            {% if name == "encrypt" %}
+            <div class="form-group">
+                <div class="label-with-value">
+                    <label for="encrypt-password" class="form-label">Encryption Secret Password</label>
+                    <button type="button" class="btn-text-link" onclick="generateAndSetPassword('encrypt-password')">
+                        ⚡ Generate Strong Key
+                    </button>
+                </div>
+                <div class="input-with-button">
+                    <input type="password" id="encrypt-password" name="password" class="form-control" placeholder="Enter a secure encryption password..." required autocomplete="new-password">
+                    <button type="button" class="btn-toggle-pw" onclick="togglePasswordVisibility('encrypt-password', this)" title="Show/Hide Password">
+                        👁️
+                    </button>
+                </div>
+                <div id="encrypt-strength" class="strength-meter-box"></div>
+            </div>
+
+            {% elif name == "decrypt" %}
+            <div class="form-group">
+                <label for="decrypt-password" class="form-label">Decryption Password</label>
+                <div class="input-with-button">
+                    <input type="password" id="decrypt-password" name="password" class="form-control" placeholder="Enter the password used when encrypting..." required autocomplete="current-password">
+                    <button type="button" class="btn-toggle-pw" onclick="togglePasswordVisibility('decrypt-password', this)" title="Show/Hide Password">
+                        👁️
+                    </button>
+                </div>
+            </div>
+
+            {% elif name == "compress" %}
+            <div class="form-group">
+                <div class="label-with-value">
+                    <label for="quality-input" class="form-label">Compression Quality Level</label>
+                    <span class="slider-value" id="quality-val">70%</span>
+                </div>
+                <input type="range" id="quality-input" name="quality" min="10" max="95" value="70" class="form-range" oninput="document.getElementById('quality-val').textContent = this.value + '%'">
+                <div class="range-labels">
+                    <span>10% (Smallest File Size)</span>
+                    <span>70-80% (Recommended)</span>
+                    <span>95% (Maximum Quality)</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="compress-format" class="form-label">Output Compression Encoding</label>
+                <select id="compress-format" name="format" class="form-select">
+                    <option value="JPG" selected>Standard Progressive JPEG (Universal Compatibility)</option>
+                    <option value="WEBP">Modern WebP (Up to 30% smaller size at equal quality)</option>
+                </select>
+            </div>
+
+            {% elif name == "resize" %}
+            <div class="form-group">
+                <label for="resize-preset" class="form-label">Resolution Preset</label>
+                <select id="resize-preset" class="form-select" onchange="applyResolutionPreset(this)">
+                    <option value="custom" selected>Custom Dimensions</option>
+                    <option value="1920x1080">1920 × 1080 (Full HD 1080p)</option>
+                    <option value="1280x720">1280 × 720 (HD 720p)</option>
+                    <option value="3840x2160">3840 × 2160 (4K UHD)</option>
+                    <option value="1080x1080">1080 × 1080 (Square / Instagram)</option>
+                    <option value="256x256">256 × 256 (Profile Avatar / Thumbnail)</option>
+                </select>
+            </div>
+            <div class="dimensions-grid">
+                <div class="form-group">
+                    <label for="width-input" class="form-label">Width (Pixels)</label>
+                    <input type="number" id="width-input" name="width" value="1280" min="16" max="8000" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="height-input" class="form-label">Height (Pixels - Optional)</label>
+                    <input type="number" id="height-input" name="height" placeholder="Auto calculated" min="16" max="8000" class="form-control">
+                </div>
+            </div>
+            <div class="form-checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="keep_aspect" id="keep-aspect" checked>
+                    <span>Preserve Aspect Ratio (Prevents distortion)</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="resample-method" class="form-label">Resampling Interpolation Filter</label>
+                <select id="resample-method" name="resample" class="form-select">
+                    <option value="LANCZOS" selected>Lanczos Filter (Best Quality, High-Order Sinc Resampling)</option>
+                    <option value="BICUBIC">Bicubic Filter (Smooth Gradients)</option>
+                    <option value="BILINEAR">Bilinear Filter (Fast Interpolation)</option>
+                </select>
+            </div>
+
+            {% elif name == "convert" %}
+            <div class="form-group">
+                <label for="format-select" class="form-label">Target Conversion Format</label>
+                <select id="format-select" name="format" class="form-select">
+                    <option value="PNG" selected>PNG (Lossless, Transparency Alpha Channel Support)</option>
+                    <option value="WEBP">WEBP (Next-Gen Compact Format for Web)</option>
+                    <option value="JPG">JPG / JPEG (Standard Compressed Photographic Image)</option>
+                    <option value="BMP">BMP (Uncompressed Windows Bitmap)</option>
+                    <option value="TIFF">TIFF (High Dynamic Range Publishing Standard)</option>
+                    <option value="ICO">ICO (Multi-Size Application & Browser Favicon)</option>
+                </select>
+            </div>
+
+            {% elif name == "metadata" %}
+            <div class="metadata-action-bar">
+                <button type="button" class="btn btn-secondary" onclick="inspectUploadedMetadata()" id="btn-inspect-exif">
+                    🔍 Inspect Image EXIF Metadata
+                </button>
+            </div>
+            <div id="metadata-preview-card" class="metadata-preview-panel" style="display: none;">
+                <div class="metadata-preview-header">
+                    <h4>EXIF Hardware & Geospatial Analysis</h4>
+                    <span id="metadata-status-badge" class="badge"></span>
+                </div>
+                <div id="metadata-content" class="metadata-grid"></div>
+            </div>
+            <div class="info-alert">
+                <div class="alert-icon">{{ icons.icon("shield", 20) }}</div>
+                <div class="alert-body">
+                    <strong>Permanent Privacy Sanitization:</strong> Clicking "Remove Metadata" completely scrubs hidden GPS latitude/longitude coordinates, camera device serial numbers, and personal timestamps.
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="btn-spinner" style="display: none;"></span>
+                    <span class="btn-text">{{ tool.button }}</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

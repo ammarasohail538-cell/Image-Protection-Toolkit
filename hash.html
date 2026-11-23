@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}AI Tamper & Edit Detector (Digital Fingerprint){% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <a href="/" class="back-link">
+            {{ icons.icon("arrow-left", 18) }}
+            <span>Back to Dashboard</span>
+        </a>
+    </div>
+
+    <div class="tool-panel">
+        <div class="tool-panel-header">
+            <div class="tool-header-left">
+                <div class="tool-icon-wrapper">
+                    {{ icons.icon("hash", 28) }}
+                </div>
+                <div>
+                    <div class="title-with-badge">
+                        <h1 class="panel-title">AI Tamper & Edit Detector</h1>
+                        <span class="panel-badge">Authenticity Check • SHA-256 Fingerprint</span>
+                    </div>
+                    <p class="panel-description">
+                        Compare an original photo with an AI-edited or tampered version to instantly prove if even a single pixel was changed.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- What this does Overview Box -->
+        <div class="simple-terms-card">
+            <div class="simple-terms-icon">💡</div>
+            <div class="simple-terms-content">
+                <strong>What this does:</strong>
+                <span>Every image has a unique digital fingerprint (cryptographic hash). If someone modifies your photo using an AI generator, Photoshop, or deepfake filter, even a single altered pixel completely changes the fingerprint. Upload your original and suspected images side-by-side to prove whether the photo is genuine or tampered with!</span>
+            </div>
+        </div>
+
+        <form id="hash-form" action="/hash" method="post" enctype="multipart/form-data" class="tool-form">
+            <div class="hash-inputs-grid">
+                <div class="hash-input-card">
+                    <label class="form-label">Original Photo (Genuine File) <span class="required">*</span></label>
+                    <div class="dropzone dropzone-sm" id="dropzone1">
+                        <input type="file" name="file1" id="file1" required>
+                        <div class="dropzone-content">
+                            <div class="dropzone-icon">{{ icons.icon("upload", 28) }}</div>
+                            <p class="dropzone-title">Select Original Photo</p>
+                            <span class="file-preview-text" id="file1-name"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hash-input-card">
+                    <label class="form-label">Suspected Photo (AI-Edited or Tampered - Optional)</label>
+                    <div class="dropzone dropzone-sm" id="dropzone2">
+                        <input type="file" name="file2" id="file2">
+                        <div class="dropzone-content">
+                            <div class="dropzone-icon">{{ icons.icon("upload", 28) }}</div>
+                            <p class="dropzone-title">Select Suspected / AI-Edited Photo</p>
+                            <span class="file-preview-text" id="file2-name"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="hash-submit-btn">
+                    <span class="btn-spinner" style="display: none;"></span>
+                    <span class="btn-text">Check Image Authenticity & Fingerprints</span>
+                </button>
+            </div>
+        </form>
+
+        <div id="hash-result-card" class="result-card" style="display: none;">
+            <h3 class="result-card-title">Digital Fingerprint & Integrity Comparison</h3>
+            <div id="hash-output" class="hash-output-container"></div>
+        </div>
+
+        <div class="info-alert" style="margin-top: 2rem;">
+            <div class="alert-icon">{{ icons.icon("shield", 20) }}</div>
+            <div class="alert-body">
+                <strong>Cryptographic Integrity Specification:</strong> SHA-256 generates a 256-bit fixed-length output. MD5 and SHA-1 are legacy digests provided here for backwards compatibility auditing. The <em>Avalanche Effect</em> guarantees that altering even one pixel in an image radically alters every single bit of the resulting hash.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

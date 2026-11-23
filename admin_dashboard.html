@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Administrator Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-container admin-container">
+    <div class="admin-header-bar">
+        <div>
+            <div class="admin-title-badge">
+                <span class="status-dot"></span>
+                <span>System Administration Active</span>
+            </div>
+            <h1 class="page-heading">Administrator Control Console</h1>
+            <p class="page-subheading">Centralized management of registered users, security policies, and system-wide cryptographic audit logs.</p>
+        </div>
+        <div class="admin-header-actions">
+            <a href="/" class="btn btn-secondary">
+                {{ icons.icon("arrow-left", 16) }}
+                <span>User Toolkit</span>
+            </a>
+            <a href="/admin/logout" class="btn btn-danger">
+                {{ icons.icon("log-out", 16) }}
+                <span>Admin Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Admin Metric Cards -->
+    <div class="admin-stats-grid">
+        <div class="admin-stat-card">
+            <div class="stat-card-icon">{{ icons.icon("user", 24) }}</div>
+            <div class="stat-card-info">
+                <span class="stat-card-lbl">Total Registered Users</span>
+                <strong class="stat-card-val">{{ users|length }}</strong>
+            </div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-card-icon">{{ icons.icon("activity", 24) }}</div>
+            <div class="stat-card-info">
+                <span class="stat-card-lbl">Total System Operations</span>
+                <strong class="stat-card-val">{{ logs|length }}</strong>
+            </div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-card-icon">{{ icons.icon("shield", 24) }}</div>
+            <div class="stat-card-info">
+                <span class="stat-card-lbl">Cryptographic Security</span>
+                <strong class="stat-card-val" style="color: #34D399; font-size: 1.1rem;">AES-256 & SHA-256 Online</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Registered Users -->
+    <div class="admin-section">
+        <div class="section-header">
+            <h2 class="section-title">Registered System Users</h2>
+            <div class="section-line"></div>
+        </div>
+
+        {% if users and users|length > 0 %}
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">User ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Total Operations Executed</th>
+                            <th style="width: 220px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td class="cell-muted">#{{ u["id"] }}</td>
+                            <td>
+                                <span class="user-pill">
+                                    {{ icons.icon("user", 14) }}
+                                    <strong>{{ u["username"] }}</strong>
+                                </span>
+                            </td>
+                            <td>
+                                {% if u["is_admin"] %}
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700;">★ ADMIN</span>
+                                {% else %}
+                                <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94A3B8;">USER</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge badge-success">{{ u["log_count"] }} operations logged</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                                    {% if not u["is_admin"] %}
+                                    <form action="{{ url_for('admin_promote_user_route', user_id=u['id']) }}" method="post" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline" style="border-color: rgba(139, 92, 246, 0.5); color: #C084FC;" title="Grant Admin Rights">
+                                            {{ icons.icon("shield", 14) }}
+                                            <span>Make Admin</span>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    <form action="{{ url_for('admin_delete_user_route', user_id=u['id']) }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to permanently delete user {{ u.username }} and all their activity records?');">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Delete User">
+                                            {{ icons.icon("trash", 14) }}
+                                            <span>Delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state-card" style="padding: 2rem;">
+            <p>No registered users found in database.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Section 2: Global System Audit Logs -->
+    <div class="admin-section">
+        <div class="section-header-with-actions">
+            <div>
+                <h2 class="section-title">Global Audit & Operation Logs</h2>
+                <p class="section-subtitle">Real-time audit trail of all encryption, decryption, hash checks, and processing across all users.</p>
+            </div>
+            {% if logs and logs|length > 0 %}
+            <form action="{{ url_for('admin_clear_logs_route') }}" method="post" onsubmit="return confirm('Warning: This will delete ALL system activity logs across all users. Proceed?');">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    {{ icons.icon("trash", 14) }}
+                    <span>Clear All System Logs</span>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        {% if logs and logs|length > 0 %}
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>User Name</th>
+                            <th>Target File</th>
+                            <th>Operation</th>
+                            <th>Audit Status</th>
+                            <th>Timestamp</th>
+                            <th style="width: 60px; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="cell-muted">{{ loop.index }}</td>
+                            <td>
+                                <span class="user-pill">
+                                    {{ icons.icon("user", 12) }}
+                                    {{ log["username"] }}
+                                </span>
+                            </td>
+                            <td class="cell-filename">
+                                <span class="file-icon">{{ icons.icon("refresh", 14) }}</span>
+                                <span class="file-text">{{ log["filename"] }}</span>
+                            </td>
+                            <td>
+                                <span class="operation-pill">{{ log["action"] }}</span>
+                            </td>
+                            <td>
+                                {% if log["status"] == "Success" %}
+                                <span class="badge badge-success">{{ icons.icon("check", 12) }} Success</span>
+                                {% else %}
+                                <span class="badge badge-danger">{{ icons.icon("alert", 12) }} Failed</span>
+                                {% endif %}
+                            </td>
+                            <td class="cell-timestamp">{{ log["timestamp"] }}</td>
+                            <td style="text-align: center;">
+                                <form action="{{ url_for('admin_delete_log_route', log_id=log['id']) }}" method="post" style="display: inline;" onsubmit="return confirm('Delete this specific log entry?');">
+                                    <button type="submit" class="btn-icon-delete" title="Delete record">
+                                        {{ icons.icon("trash", 14) }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <span>Showing all {{ logs|length }} global system log records</span>
+                <span class="table-footer-note">Administrative read/write access active</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state-card" style="padding: 2.5rem;">
+            <p>System audit trail is clear. No operations currently recorded.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

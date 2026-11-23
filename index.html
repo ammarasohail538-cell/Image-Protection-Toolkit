@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Dashboard & Toolkit{% endblock %}
+
+{% block content %}
+<section class="hero hero-showcase">
+    <div class="ambient-glow glow-purple" style="top: -80px; left: 15%;"></div>
+    <div class="ambient-glow glow-blue" style="top: 40px; right: 15%;"></div>
+
+    <div class="hero-container">
+        <div class="hero-badge-glass">
+            <span class="badge-sparkle">✦</span>
+            <span>IMAGE PROTECTION TOOLKIT</span>
+        </div>
+        <h1 class="hero-headline-3d">
+            <span class="headline-3d-white">Your images.</span><br>
+            <span class="headline-3d-gradient">Your privacy.</span>
+        </h1>
+        <p class="hero-subtitle">
+            Protect, transform and manage your images with one beautifully simple toolkit.
+        </p>
+    </div>
+</section>
+
+<div class="features-wrapper">
+    <div class="features">
+        <div class="feature-card glass-feature-card">
+            <div class="feature-icon">{{ icons.icon("lock", 26) }}</div>
+            <div class="feature-content">
+                <h3>AES-256 CBC Security</h3>
+                <p>PBKDF2 with 100,000 salt iterations and random IV for military-grade protection.</p>
+            </div>
+        </div>
+        <div class="feature-card glass-feature-card">
+            <div class="feature-icon">{{ icons.icon("shield", 26) }}</div>
+            <div class="feature-content">
+                <h3>AI Password Defense</h3>
+                <p>Machine learning n-gram classifier flags common patterns and weak credentials in real time.</p>
+            </div>
+        </div>
+        <div class="feature-card glass-feature-card">
+            <div class="feature-icon">{{ icons.icon("hash", 26) }}</div>
+            <div class="feature-content">
+                <h3>SHA-256 Tamper Audit</h3>
+                <p>Digital cryptographic hashing detects any single-bit unauthorized file modification.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toolkit-container">
+    {# the cards are generated from the CARDS list in app.py, so adding a tool needs no HTML changes #}
+    {% for group, cards in groups %}
+    <div class="tool-section">
+        <div class="section-header">
+            <h2 class="section-title">{{ group }}</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="grid">
+            {% for card in cards %}
+            <a href="{{ card.url }}" class="tool-card glass-tool-card">
+                <div class="tool-card-top">
+                    <div class="tool-card-icon">
+                        {{ icons.icon(card.icon, 24) }}
+                    </div>
+                    {% if card.tag %}
+                    <span class="tool-badge">{{ card.tag }}</span>
+                    {% endif %}
+                </div>
+                <h3 class="tool-card-title">{{ card.title }}</h3>
+                <p class="tool-card-desc">{{ card.description }}</p>
+                <div class="tool-card-action">
+                    <span>Launch Tool</span>
+                    <span class="action-arrow">→</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
