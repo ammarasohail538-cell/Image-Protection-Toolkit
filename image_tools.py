@@ -26,16 +26,24 @@ def _output_path(path, suffix, ext=None):
     target = base + suffix + target_ext
     if not os.path.exists(target):
         return target
-    # If a file with this exact name already exists in this temp folder (e.g. batch with sample.png and sample.webp)
+
+    # If target already exists (e.g. batch with photo.png and photo.webp both converting to photo_compressed.webp)
+    # Include the original extension tag, e.g. photo_png_compressed.webp
+    orig_tag = original_ext.lstrip(".").lower()
+    alt_target = f"{base}_{orig_tag}{suffix}{target_ext}"
+    if not os.path.exists(alt_target):
+        return alt_target
+
     counter = 1
-    while os.path.exists(f"{base}{suffix}_{counter}{target_ext}"):
+    while os.path.exists(f"{base}_{counter}{suffix}{target_ext}"):
         counter += 1
-    return f"{base}{suffix}_{counter}{target_ext}"
+    return f"{base}_{counter}{suffix}{target_ext}"
 
 def compress_image(path, quality=70, out_format="JPG"):
     if not 10 <= quality <= 95:
         raise ValueError("Quality must be between 10 and 95.")
     
+    orig_sz = os.path.getsize(path)
     img = _open(path)
     out_format = (out_format or "JPG").upper()
     
@@ -46,6 +54,17 @@ def compress_image(path, quality=70, out_format="JPG"):
         img = _flatten(img)
         out = _output_path(path, "_compressed", ".jpg")
         img.save(out, "JPEG", quality=quality, optimize=True, progressive=True)
+
+    # Safeguard for tiny/optimized images (Shrink Tool polish):
+    # If compression produces an output larger than or equal to the original file,
+    # keep the original file instead so users never download a file bigger than what they started with.
+    if os.path.exists(out) and os.path.getsize(out) >= orig_sz:
+        try:
+            os.remove(out)
+        except OSError:
+            pass
+        return path
+
     return out
 
 def resize_image(path, width, height=None, keep_aspect=True, resample="LANCZOS"):

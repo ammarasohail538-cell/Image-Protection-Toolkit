@@ -383,10 +383,23 @@ def process_upload(action, func, tool_name=None):
     try:
         # Collect items to process, automatically unpacking any .zip archives (such as batch downloads)
         input_queue = []
+        saved_fnames = set()
         for file in valid_files:
             # secure_filename removes dangerous characters (like ../) so an upload cannot write outside the temp folder
             fname = secure_filename(file.filename)
-            saved_path = os.path.join(workdir, fname)
+            if not fname:
+                fname = "upload.png"
+
+            # Prevent collision if multiple files share the exact same filename
+            base, ext = os.path.splitext(fname)
+            unique_fname = fname
+            counter = 1
+            while unique_fname.lower() in saved_fnames:
+                unique_fname = f"{base}_{counter}{ext}"
+                counter += 1
+            saved_fnames.add(unique_fname.lower())
+
+            saved_path = os.path.join(workdir, unique_fname)
             file.save(saved_path)
 
             if fname.lower().endswith(".zip"):
@@ -444,8 +457,8 @@ def process_upload(action, func, tool_name=None):
                 summary_msg = f"Reduced file size by {savings_pct}% (Saved {format_file_size(diff_bytes)})"
                 highlight_val = f"{savings_pct}% Size Saved"
             else:
-                summary_msg = f"Compression finished: Optimal quality preserved ({format_file_size(total_output_bytes)})"
-                highlight_val = "100% Optimized"
+                summary_msg = f"Already optimized: Original file retained ({format_file_size(total_output_bytes)})"
+                highlight_val = "Best Size Kept"
         elif tool_name == "encrypt":
             summary_msg = f"100% Encrypted & Locked: All files protected with secret AES-256 key"
             highlight_val = "100% Encrypted"
@@ -479,10 +492,19 @@ def process_upload(action, func, tool_name=None):
             download_name = os.path.basename(out_paths[0])
             mimetype = "application/octet-stream"
         else:
+            used_arcnames = set()
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                 for out_path in out_paths:
-                    zip_file.write(out_path, arcname=os.path.basename(out_path))
+                    base_name = os.path.basename(out_path)
+                    arcname = base_name
+                    counter = 1
+                    stem, ext = os.path.splitext(base_name)
+                    while arcname in used_arcnames:
+                        arcname = f"{stem}_{counter}{ext}"
+                        counter += 1
+                    used_arcnames.add(arcname)
+                    zip_file.write(out_path, arcname=arcname)
             zip_buffer.seek(0)
             data = zip_buffer
             download_name = f"{action.lower().replace(' ', '_')}_batch.zip"
