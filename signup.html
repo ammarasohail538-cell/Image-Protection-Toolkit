@@ -88,7 +88,7 @@
                 </div>
                 {% endif %}
 
-                <form method="post" action="/signup" class="auth-form">
+                <form method="post" action="/signup" class="auth-form" id="signup-form" onsubmit="validateSignupForm(event)">
                     <div class="form-group">
                         <label for="username" class="form-label">Desired Username</label>
                         <input type="text" id="username" name="username" class="form-control form-control-glass" placeholder="Choose a username" required autofocus autocomplete="username">
@@ -97,18 +97,12 @@
                     <div class="form-group">
                         <label for="password" class="form-label">Account Password</label>
                         <div class="input-with-button">
-                            <input type="password" id="password" name="password" class="form-control form-control-glass" placeholder="Letters, numbers & symbols" required minlength="8" autocomplete="new-password" oninput="checkSignupPasswordRequirements(this.value)">
+                            <input type="password" id="password" name="password" class="form-control form-control-glass" placeholder="Create a secure password" required autocomplete="new-password">
                             <button type="button" class="btn-toggle-pw" onclick="togglePasswordVisibility('password', this)" title="Show/Hide Password">
                                 👁️
                             </button>
                         </div>
-                        <div class="pw-rules-box" id="pw-rules-box" style="margin-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.78rem;">
-                            <span id="rule-len" class="pw-rule-pill">✖ 8+ Chars</span>
-                            <span id="rule-letter" class="pw-rule-pill">✖ Letters</span>
-                            <span id="rule-num" class="pw-rule-pill">✖ Numbers</span>
-                            <span id="rule-sym" class="pw-rule-pill">✖ Symbols (!@#$)</span>
-                        </div>
-                        <p class="form-hint" style="margin-top: 0.4rem;">Stored securely using PBKDF2 one-way password hashing.</p>
+                        <p class="form-hint" style="margin-top: 0.4rem;">Must be at least 8 characters with letters, numbers, and symbols.</p>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block btn-lg btn-gradient-glow" id="signup-submit-btn">
@@ -126,46 +120,43 @@
     </div>
 </div>
 
-<style>
-.pw-rule-pill {
-    padding: 0.2rem 0.55rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: var(--text-muted);
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-.pw-rule-pill.valid {
-    background: rgba(52, 211, 153, 0.15);
-    border-color: rgba(52, 211, 153, 0.5);
-    color: #34D399;
-}
-</style>
-
 <script>
-function checkSignupPasswordRequirements(val) {
-    const hasLen = val.length >= 8;
-    const hasLetter = /[A-Za-z]/.test(val);
-    const hasNum = /[0-9]/.test(val);
-    const hasSym = /[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~]/.test(val);
+function validateSignupForm(event) {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
 
-    updatePill("rule-len", hasLen, "8+ Chars");
-    updatePill("rule-letter", hasLetter, "Letters");
-    updatePill("rule-num", hasNum, "Numbers");
-    updatePill("rule-sym", hasSym, "Symbols (!@#$)");
-}
-
-function updatePill(id, isValid, text) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (isValid) {
-        el.className = "pw-rule-pill valid";
-        el.textContent = "✔ " + text;
-    } else {
-        el.className = "pw-rule-pill";
-        el.textContent = "✖ " + text;
+    if (!username) {
+        event.preventDefault();
+        showAppModal({
+            title: "Username Required",
+            message: "Please choose a username for your account.",
+            type: "warning"
+        });
+        return false;
     }
+
+    const hasLength = password.length >= 8;
+    const hasLetter = /[A-Za-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~]/.test(password);
+
+    if (!hasLength || !hasLetter || !hasNumber || !hasSymbol) {
+        event.preventDefault();
+        let missing = [];
+        if (!hasLength) missing.push("at least 8 characters");
+        if (!hasLetter) missing.push("letters (a-z, A-Z)");
+        if (!hasNumber) missing.push("numbers (0-9)");
+        if (!hasSymbol) missing.push("a special symbol (!@#$%^&*)");
+
+        showAppModal({
+            title: "Password Does Not Meet Criteria",
+            message: "Your password does not follow the security requirements. It must include " + missing.join(", ") + ".",
+            type: "warning"
+        });
+        document.getElementById("password").focus();
+        return false;
+    }
+    return true;
 }
 </script>
 {% endblock %}

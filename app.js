@@ -315,12 +315,23 @@ function setupHashForm() {
 
         try {
             const response = await fetch(form.action, { method: "POST", body: new FormData(form) });
-            const result = await response.json();
+            const result = await response.json().catch(() => null);
 
-            if (!response.ok) {
+            if (response.status === 401) {
+                showAppModal({
+                    title: "Session Expired",
+                    message: "Your login session expired. Please log in again.",
+                    type: "warning"
+                });
+                setTimeout(() => { window.location.href = "/login"; }, 1500);
+                if (outputCard) outputCard.style.display = "none";
+                return;
+            }
+
+            if (!response.ok || !result) {
                 showAppModal({
                     title: "Hash Calculation Error",
-                    message: escapeHtml(result.message || "Failed to compute file digests."),
+                    message: escapeHtml((result && result.message) || "Failed to compute file digests. Please try again in a few moments."),
                     type: "error"
                 });
                 if (outputCard) outputCard.style.display = "none";
@@ -369,7 +380,7 @@ function setupHashForm() {
         } catch (error) {
             showAppModal({
                 title: "Hashing Error",
-                message: "Could not reach the hashing service.",
+                message: "Could not reach the server. If the server was sleeping, please wait 15 seconds and try again.",
                 type: "error"
             });
         } finally {

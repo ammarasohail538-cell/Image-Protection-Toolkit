@@ -65,7 +65,17 @@ def generate_strong_password(length=16):
             return password
 
 def check_password(password):
-    # the model returns the probability that this password looks like a commonly used one
+    # Calculate Shannon entropy and crack time
+    entropy = calculate_entropy(password)
+    crack_time = estimate_crack_time(entropy)
+
+    has_upper = any(c.isupper() for c in password)
+    has_lower = any(c.islower() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    has_symbol = any(c in string.punctuation for c in password)
+    char_types = sum([has_upper, has_lower, has_digit, has_symbol])
+
+    # Machine learning pattern probability (Tfidf + LogisticRegression)
     if model is not None:
         try:
             guessable = float(model.predict_proba([password])[0][1])
@@ -73,10 +83,33 @@ def check_password(password):
             guessable = 0.5
     else:
         guessable = 0.5
-    score = round((1 - guessable) * 100)  # 100 = looks random, 0 = looks like a common password
 
+    # 1. Entropy component (max 40 points)
+    entropy_pts = min(40.0, (entropy / 75.0) * 40.0)
+
+    # 2. Diversity component: 5 points per character class (max 20 points)
+    diversity_pts = char_types * 5.0
+
+    # 3. Length component (max 20 points)
+    if len(password) >= 14:
+        length_pts = 20.0
+    elif len(password) >= 10:
+        length_pts = 12.0
+    elif len(password) >= 8:
+        length_pts = 6.0
+    else:
+        length_pts = 0.0
+
+    # 4. AI ML Model component: reward passwords that do not match known breach patterns (max 20 points)
+    ai_pts = (1.0 - guessable) * 20.0
+
+    raw_score = entropy_pts + diversity_pts + length_pts + ai_pts
+
+    # Passwords shorter than 8 characters are strictly capped at 25 (Weak)
     if len(password) < 8:
-        score = min(score, 20)  # very short passwords are weak whatever the model says
+        raw_score = min(raw_score, 25.0)
+
+    score = max(0, min(100, round(raw_score)))
 
     if score < 40:
         label = "Weak"
@@ -85,28 +118,27 @@ def check_password(password):
     else:
         label = "Strong"
 
-    entropy = calculate_entropy(password)
-    crack_time = estimate_crack_time(entropy)
-
-    # simple rule-based tips (the AI decides the score, the rules only give advice)
+    # Context-aware security tips
     tips = []
     if len(password) < 12:
         tips.append("Use at least 12 characters.")
-    if password.lower() == password:
+    if not has_upper:
         tips.append("Mix in uppercase letters.")
-    if not any(c.isdigit() for c in password):
-        tips.append("Add some digits.")
-    if password.isalnum():
-        tips.append("Add a symbol such as ! or #.")
-    if guessable > 0.5:
-        tips.append("This looks similar to commonly used passwords. Avoid dictionary words and repetitive patterns.")
+    if not has_lower:
+        tips.append("Mix in lowercase letters.")
+    if not has_digit:
+        tips.append("Add some digits (0-9).")
+    if not has_symbol:
+        tips.append("Add a special symbol such as ! or # or @.")
+    if guessable > 0.85 and len(password) < 14:
+        tips.append("This contains sequences or patterns similar to common passwords. Avoid predictable dictionary phrases.")
 
     composition = {
         "length": len(password),
-        "has_upper": any(c.isupper() for c in password),
-        "has_lower": any(c.islower() for c in password),
-        "has_digit": any(c.isdigit() for c in password),
-        "has_symbol": any(c in string.punctuation for c in password),
+        "has_upper": has_upper,
+        "has_lower": has_lower,
+        "has_digit": has_digit,
+        "has_symbol": has_symbol,
     }
 
     return {
