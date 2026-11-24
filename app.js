@@ -249,8 +249,33 @@ function setupForm(formId) {
                     buttonText: "Done"
                 });
             } else {
+                if (response.status === 401) {
+                    showAppModal({
+                        title: "Session Expired",
+                        message: "Your login session has expired. Please log in again.",
+                        type: "warning",
+                        buttonText: "Log In"
+                    });
+                    setTimeout(() => { window.location.href = "/login"; }, 1500);
+                    return;
+                }
+                if (response.status === 502 || response.status === 504) {
+                    showAppModal({
+                        title: "Processing Timeout",
+                        message: "The batch operation took too long on the cloud server. For large 4K images (15+ MB), try processing fewer files at once or choosing JPEG format for faster encoding.",
+                        type: "warning",
+                        buttonText: "Understood"
+                    });
+                    return;
+                }
+
+                let defaultMsg = "The server encountered an error processing your request.";
+                if (response.status === 413) {
+                    defaultMsg = "Batch upload exceeds the maximum allowable size (32 MB). Please select fewer images.";
+                }
+
                 const result = await response.json().catch(() => ({
-                    message: "The server encountered an error processing your request."
+                    message: defaultMsg
                 }));
 
                 // Check specifically for wrong password vs wrong file

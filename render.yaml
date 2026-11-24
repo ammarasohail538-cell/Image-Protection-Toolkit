@@ -3,7 +3,7 @@ services:
     name: image-protection-toolkit
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn --timeout 180 --workers 2 app:app
     plan: free
     envVars:
       - key: PYTHON_VERSION

@@ -22,7 +22,15 @@ def _save(img, out_path, **kwargs):
 
 def _output_path(path, suffix, ext=None):
     base, original_ext = os.path.splitext(path)
-    return base + suffix + (ext or original_ext)
+    target_ext = ext or original_ext
+    target = base + suffix + target_ext
+    if not os.path.exists(target):
+        return target
+    # If a file with this exact name already exists in this temp folder (e.g. batch with sample.png and sample.webp)
+    counter = 1
+    while os.path.exists(f"{base}{suffix}_{counter}{target_ext}"):
+        counter += 1
+    return f"{base}{suffix}_{counter}{target_ext}"
 
 def compress_image(path, quality=70, out_format="JPG"):
     if not 10 <= quality <= 95:
@@ -33,7 +41,7 @@ def compress_image(path, quality=70, out_format="JPG"):
     
     if out_format == "WEBP":
         out = _output_path(path, "_compressed", ".webp")
-        img.save(out, "WEBP", quality=quality, method=6)
+        img.save(out, "WEBP", quality=quality, method=4)
     else:
         img = _flatten(img)
         out = _output_path(path, "_compressed", ".jpg")
