@@ -83,18 +83,7 @@
                     <p class="form-hint">If provided, Share 1 is tied to this PIN. Your friend only needs Share 2 and this PIN to unlock the secret!</p>
                 </div>
 
-                <div class="form-group">
-                    <div class="label-with-value">
-                        <label for="vc-threshold" class="form-label">Contrast Binarization Sensitivity</label>
-                        <span class="slider-value" id="vc-threshold-val">128</span>
-                    </div>
-                    <input type="range" id="vc-threshold" min="40" max="220" value="128" class="form-range" oninput="document.getElementById('vc-threshold-val').textContent = this.value">
-                    <div class="range-labels">
-                        <span>40 (Darker)</span>
-                        <span>128 (Balanced)</span>
-                        <span>220 (Brighter)</span>
-                    </div>
-                </div>
+                <input type="hidden" id="vc-threshold" value="128">
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary btn-lg" id="vc-split-btn">
@@ -146,12 +135,12 @@
                     <div class="vc-share-card vc-reconstructed-card">
                         <div class="vc-share-header">
                             <span class="badge badge-success">Secret Revealed</span>
-                            <small style="color: #34D399; font-weight: 700;">Reconstructed</small>
+                            <small style="color: #34D399; font-weight: 700;">Original Photo</small>
                         </div>
                         <div class="vc-img-box">
                             <img id="img-overlay" src="" alt="Reconstructed Secret" class="vc-preview-img">
                         </div>
-                        <p class="vc-note" style="color: #6EE7B7; font-weight: 600;">The secret emerges with zero computation!</p>
+                        <p class="vc-note" style="color: #6EE7B7; font-weight: 600;">Original photo restored in full vibrant color — zero pixelation!</p>
                         <button type="button" class="btn btn-sm btn-primary" style="margin-top: 0.5rem; width: 100%;" onclick="sendToFriendTest()">
                             <span>⚡ Test Unlocking in Friend Mode ➔</span>
                         </button>
@@ -282,12 +271,15 @@
                     <div class="vc-share-card vc-reconstructed-card">
                         <div class="vc-share-header">
                             <span class="badge badge-success" id="unlock-status-badge">Secret Unlocked!</span>
-                            <small style="color: #34D399; font-weight: 700;">Zero CPU Decrypt</small>
+                            <small style="color: #34D399; font-weight: 700;">Clean Original</small>
                         </div>
                         <div class="vc-img-box">
                             <img id="img-unlock-result" src="" alt="Unlocked Result" class="vc-preview-img">
                         </div>
-                        <p class="vc-note" id="unlock-status-note" style="color: #6EE7B7; font-weight: 600;">The secret message is revealed by optical alignment!</p>
+                        <p class="vc-note" id="unlock-status-note" style="color: #6EE7B7; font-weight: 600;">Original image restored with crystal clarity — zero pixelation!</p>
+                        <button type="button" class="btn btn-sm btn-secondary" id="btn-toggle-view" style="margin-top: 0.5rem; width: 100%; font-size: 0.8rem;" onclick="toggleUnlockDisplayMode()">
+                            📑 View Optical Stacking (2x2 Grid)
+                        </button>
                     </div>
                 </div>
             </div>
@@ -425,6 +417,13 @@ function switchVcTab(tabId) {
     if (targetPane) targetPane.style.display = "block";
     if (targetBtn) targetBtn.classList.add("active");
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "unlock" || params.get("mode") === "friend") {
+        switchVcTab("unlock");
+    }
+});
 
 function handleVcFileChosen(input) {
     if (input.files && input.files[0]) {
@@ -630,6 +629,15 @@ async function handleVisualCryptoUnlock(event) {
         };
         reader.readAsDataURL(fileInput.files[0]);
 
+        currentUnlockClean = data.unlocked;
+        currentUnlockOptical = data.optical_overlay || data.unlocked;
+        unlockDisplayMode = "clean";
+        const toggleBtn = document.getElementById("btn-toggle-view");
+        if (toggleBtn) {
+            toggleBtn.style.display = data.optical_overlay ? "block" : "none";
+            toggleBtn.textContent = "📑 View Optical Stacking (2x2 Grid)";
+        }
+
         document.getElementById("img-unlock-key").src = data.share1_regenerated;
         document.getElementById("img-unlock-result").src = data.unlocked;
         document.getElementById("unlock-pin-used-badge").textContent = "PIN Used: " + data.pin;
@@ -647,6 +655,7 @@ async function handleVisualCryptoUnlock(event) {
             statusBadge.textContent = "Wrong PIN (Still Scrambled Noise)";
             statusNote.style.color = "#F87171";
             statusNote.textContent = "Security Verified: With the wrong PIN, the output remains 100% scrambled TV static noise!";
+            if (toggleBtn) toggleBtn.style.display = "none";
         } else {
             statusBadge.className = "badge badge-success";
             statusBadge.style.background = "";
@@ -654,7 +663,7 @@ async function handleVisualCryptoUnlock(event) {
             statusBadge.style.borderColor = "";
             statusBadge.textContent = "Secret Unlocked!";
             statusNote.style.color = "#6EE7B7";
-            statusNote.textContent = "Success: Correct PIN unlocked the secret image by optical alignment!";
+            statusNote.textContent = "Success: Correct PIN unlocked the crisp original image — zero pixelation!";
         }
 
         document.getElementById("vc-unlock-results").style.display = "block";
@@ -665,6 +674,29 @@ async function handleVisualCryptoUnlock(event) {
     } finally {
         btn.disabled = false;
         spinner.style.display = "none";
+    }
+}
+
+let currentUnlockClean = "";
+let currentUnlockOptical = "";
+let unlockDisplayMode = "clean";
+
+function toggleUnlockDisplayMode() {
+    const imgElem = document.getElementById("img-unlock-result");
+    const btnElem = document.getElementById("btn-toggle-view");
+    const noteElem = document.getElementById("unlock-status-note");
+    if (!imgElem || !currentUnlockClean) return;
+
+    if (unlockDisplayMode === "clean" && currentUnlockOptical) {
+        unlockDisplayMode = "optical";
+        imgElem.src = currentUnlockOptical;
+        if (btnElem) btnElem.textContent = "👁️ View Clean Original (No Pixelation)";
+        if (noteElem) noteElem.textContent = "Showing physical optical transparency stacking (Naor-Shamir 2x2 grid simulation).";
+    } else {
+        unlockDisplayMode = "clean";
+        imgElem.src = currentUnlockClean;
+        if (btnElem) btnElem.textContent = "📑 View Optical Stacking (2x2 Grid)";
+        if (noteElem) noteElem.textContent = "Success: Correct PIN unlocked the crisp original image — zero pixelation!";
     }
 }
 

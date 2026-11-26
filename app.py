@@ -725,10 +725,12 @@ def visual_crypto_split():
     try:
         threshold = int(request.form.get("threshold", 128))
         pin = request.form.get("pin", "").strip()
-        share1, share2, overlay, dims = visual_crypto.process_visual_crypto(file.stream, threshold=threshold, pin=pin)
+        res = visual_crypto.process_visual_crypto(file.stream, threshold=threshold, pin=pin)
+        share1, share2, clean_img, dims, overlay = res[0], res[1], res[2], res[3], res[4]
         
         uri1 = visual_crypto.image_to_base64_data_uri(share1)
         uri2 = visual_crypto.image_to_base64_data_uri(share2)
+        uri_clean = visual_crypto.image_to_base64_data_uri(clean_img)
         uri_overlay = visual_crypto.image_to_base64_data_uri(overlay)
 
         log_activity(session["user_id"], file.filename, "Visual Crypto Split", "Success")
@@ -737,7 +739,8 @@ def visual_crypto_split():
             ok=True,
             share1=uri1,
             share2=uri2,
-            overlay=uri_overlay,
+            overlay=uri_clean,
+            optical_overlay=uri_overlay,
             dimensions=f"{dims[0]}x{dims[1]} px",
             share_dimensions=f"{share1.size[0]}x{share1.size[1]} px",
             pin=pin
@@ -757,7 +760,8 @@ def visual_crypto_download():
     try:
         threshold = int(request.form.get("threshold", 128))
         pin = request.form.get("pin", "").strip()
-        share1, share2, _, _ = visual_crypto.process_visual_crypto(file.stream, threshold=threshold, pin=pin)
+        res = visual_crypto.process_visual_crypto(file.stream, threshold=threshold, pin=pin)
+        share1, share2 = res[0], res[1]
 
         zip_buf = io.BytesIO()
         with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -786,13 +790,16 @@ def visual_crypto_unlock_pin():
         return jsonify(ok=False, message="Please enter the Secret PIN or Passphrase."), 400
 
     try:
-        unlocked_img, share1_regen, dims = visual_crypto.unlock_share_with_pin(file.stream, pin)
-        unlocked_uri = visual_crypto.image_to_base64_data_uri(unlocked_img)
+        res = visual_crypto.unlock_share_with_pin(file.stream, pin)
+        clean_img, share1_regen, dims, overlay_img = res[0], res[1], res[2], res[3]
+        clean_uri = visual_crypto.image_to_base64_data_uri(clean_img)
+        overlay_uri = visual_crypto.image_to_base64_data_uri(overlay_img)
         share1_uri = visual_crypto.image_to_base64_data_uri(share1_regen)
         log_activity(session["user_id"], file.filename, f"Visual Crypto Unlock (PIN: {pin[:2]}**)", "Success")
         return jsonify(
             ok=True,
-            unlocked=unlocked_uri,
+            unlocked=clean_uri,
+            optical_overlay=overlay_uri,
             share1_regenerated=share1_uri,
             dimensions=f"{dims[0]}x{dims[1]} px",
             pin=pin
